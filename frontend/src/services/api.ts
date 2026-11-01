@@ -1,6 +1,15 @@
-type RuntimeEnv = { VITE_API_BASE_URL?: string; VITE_DEPOSITGUARD_INSTITUTION_ID?: string }
+type RuntimeEnv = {
+  VITE_API_BASE_URL?: string
+  VITE_DEPOSITGUARD_INSTITUTION_ID?: string
+  DEV?: boolean
+}
+
 const env = (import.meta as ImportMeta & { env?: RuntimeEnv }).env ?? {}
-export const API_BASE_URL = (env.VITE_API_BASE_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+
+export const API_BASE_URL = (
+  env.VITE_API_BASE_URL ?? (env.DEV ? 'http://localhost:8000' : '')
+).replace(/\/$/, '')
+
 export const CONFIGURED_INSTITUTION_ID = env.VITE_DEPOSITGUARD_INSTITUTION_ID?.trim() ?? ''
 
 export type Institution = { id: string; name: string; created_at: string }
