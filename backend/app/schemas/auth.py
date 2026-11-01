@@ -79,3 +79,13 @@ class UserRegistrationRequest(BaseModel):
 
 class UserRegistrationResponse(UserResponse):
     pass
+
+class BootstrapAdminRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailField
+    display_name: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=1, max_length=120),
+    ]
+    password: PasswordField

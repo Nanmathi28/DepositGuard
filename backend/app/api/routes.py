@@ -1,3 +1,4 @@
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi import File, Form, UploadFile
 from sqlalchemy import func, select
@@ -61,7 +62,56 @@ from app.services.workflow import (
 from app.services.graph import GraphPolicyError, GraphService, InvalidRelationship, RelationshipConflict
 from app.services.priority import PriorityConfigurationError, PriorityScoringService
 
+from app.schemas.auth import BootstrapAdminRequest
+
 public_router = APIRouter()
+
+@public_router.post("/auth/bootstrap-admin", tags=["authentication"])
+def bootstrap_admin(
+    payload: BootstrapAdminRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> dict:
+    settings = get_settings()
+    configured_secret = settings.bootstrap_secret
+    supplied_secret = request.headers.get("X-Bootstrap-Secret", "")
+
+    if not configured_secret or not secrets.compare_digest(
+        supplied_secret, configured_secret
+    ):
+        raise HTTPException(status_code=403, detail="Bootstrap access is unavailable.")
+
+    existing_admin = db.scalar(
+        select(User.id).where(User.is_system_admin.is_(True))
+    )
+    if existing_admin is not None:
+        raise HTTPException(status_code=409, detail="A system administrator already exists.")
+
+    validate_password(payload.password)
+
+    user = create_user(
+        db,
+        email=payload.email,
+        display_name=payload.display_name,
+        password=payload.password,
+        is_system_admin=True,
+        must_change_password=True,
+    )
+
+    record_security_event(
+        db,
+        None,
+        "system_admin_bootstrapped",
+        user.id,
+    )
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "message": "Initial system administrator created successfully.",
+        "user_id": user.id,
+        "email": user.email,
+    }
 
 
 def authorize_request(request: Request, db: Session = Depends(get_db)) -> None:

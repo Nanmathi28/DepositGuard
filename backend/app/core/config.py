@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     private_storage_path: Path = Path(__file__).resolve().parents[2] / "private_uploads"
     auth_session_minutes: int = 60
     auth_cookie_secure: bool = False
+    bootstrap_secret: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
